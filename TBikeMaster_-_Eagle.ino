@@ -1,8 +1,3 @@
-#if CONFIG_FREERTOS_UNICORE
-#define ARDUINO_RUNNING_CORE 0
-#else
-#define ARDUINO_RUNNING_CORE 1
-#endif
 #ifdef __AVR__
  #include <avr/power.h> // Required for 16 MHz Adafruit Trinket
 #endif
@@ -15,7 +10,7 @@
 #include "MPU6050.h"
 #include "I2Cdev.h"
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
-    #include "Wire.h"
+#include "Wire.h"
 #endif
 
 #include <BLEDevice.h>
@@ -40,19 +35,13 @@ AceButton centerButton(CENTER_BUTTON_PIN);
 AceButton rightButton(RIGTH_BUTTON_PIN);
 AceButton leftButton(LEFT_BUTTON_PIN);
 
-
-void LuxBrigTask( void *pvParameters );
-
+//void LuxBrigTask( void *pvParameters );
 
 int state = 1;
-int counter = 0;
-bool isEditting = false;
-bool isBlinking = false;
 bool isDirActive = false;
 String _direction;
 unsigned long tiempo;
 #define DELAY 10000
-String rx_brigthness;
 
 BLEServer* pServer = NULL;
 BLECharacteristic* pCharacteristic = NULL;
@@ -76,38 +65,33 @@ void handleEvent(AceButton* button, uint8_t eventType,
           Serial.print(F("New state: "));
           Serial.println(state);
         break;
-      case AceButton::kEventLongPressed: 
-        isEditting = !isEditting;
-        Serial.println(isEditting);
-        if(state >= 1){
+      case AceButton::kEventLongPressed:
           unsigned long intCh1Rise = micros();
           tiempo = (micros() - intCh1Rise) / 1000;
           if(millis()-tiempo>3000){            
             digitalWrite(POWER_SYS_LED, LOW);
             delay(1000);
             esp_deep_sleep_start();
-          }
-        }         
+          }        
         break;
     }
   } else if (pin == LEFT_BUTTON_PIN) {
     switch (eventType) {
       case AceButton::kEventPressed:
       case AceButton::kEventRepeatPressed:
-        isBlinking = false;
         
           if (eventType == AceButton::kEventPressed) {
-            Serial.println(F("Right Pressed"));
-            digitalWrite(DIR_LEFT_LED, LOW);
-            digitalWrite(DIR_RIGHT_LED, HIGH);
+            Serial.println(F("Left Pressed"));
+            digitalWrite(DIR_LEFT_LED, HIGH);
+            digitalWrite(DIR_RIGHT_LED, LOW);
             isDirActive = true;
             tiempo = millis();
-            _direction = "Right";
+            _direction = "Left";
             //_rxValue = "D00001";
             //sendBLECodecData(_rxValue);
           } else {
             Serial.println(F("Change Button: Repeat Pressed"));
-            digitalWrite(DIR_RIGHT_LED, LOW);
+            digitalWrite(DIR_LEFT_LED, LOW);
             //isDirActive = false;
           }
         break;
@@ -115,10 +99,9 @@ void handleEvent(AceButton* button, uint8_t eventType,
       case AceButton::kEventLongReleased:
         break;
       case AceButton::kEventDoubleClicked:
-        isBlinking = false;
       
           Serial.println(F("Change Button 2: Repeat"));
-           digitalWrite(DIR_RIGHT_LED, LOW);
+           digitalWrite(DIR_LEFT_LED, LOW);
            isDirActive = false;
            //_rxValue = "D00010";
           //sendBLECodecData(_rxValue);
@@ -128,19 +111,18 @@ void handleEvent(AceButton* button, uint8_t eventType,
     switch (eventType) {
       case AceButton::kEventPressed:
       case AceButton::kEventRepeatPressed:
-        isBlinking = false;
           if (eventType == AceButton::kEventPressed) {
             Serial.println(F("Change Button 2: Pressed"));
-            digitalWrite(DIR_LEFT_LED, HIGH);
-            digitalWrite(DIR_RIGHT_LED, LOW); 
+            digitalWrite(DIR_LEFT_LED, LOW);
+            digitalWrite(DIR_RIGHT_LED, HIGH); 
             isDirActive = true;
             tiempo = millis();
-            _direction = "Left";
+            _direction = "Right";
             //_rxValue = "D00100";
             //sendBLECodecData(_rxValue);
           } else {
             Serial.println(F("Change Button 2: Repeat Pressed"));
-             digitalWrite(DIR_LEFT_LED, LOW);
+             digitalWrite(DIR_RIGHT_LED, LOW);
              isDirActive = false;
           }
         break;
@@ -148,21 +130,19 @@ void handleEvent(AceButton* button, uint8_t eventType,
       case AceButton::kEventLongReleased:
         break;
       case AceButton::kEventDoubleClicked:
-        isBlinking = false;
           Serial.println(F("Change Button 2: Repeat"));
-          digitalWrite(DIR_LEFT_LED, LOW);
+          digitalWrite(DIR_RIGHT_LED, LOW);
           isDirActive = false;
           //_rxValue = "D00010";
           //sendBLECodecData(_rxValue);
-        break;
-      
+        break;    
     }
   }
 }
 void setup() {
   delay(1000);
-  Serial.begin(38400);
-  while (! Serial);
+  Serial.begin(38400);//Configuracion de baudios
+  while (! Serial);//Espera un dato en el puerto serial
   Serial.println(F("setup(): begin"));
   Serial.println(F("Enable GPIOs!"));  
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_12,0); // Pin para despertar el ESP
